@@ -1,63 +1,67 @@
 import asyncio
+import threading
+from flask import Flask
 from playwright.async_api import async_playwright
 
+# === Lootdest URL ===
 LOOTDEST_URL = "https://lootdest.org/s?Quh5zXjp&data=l%2BVS0fBwFTqe3k34ic8jObg%2FV%2FDN6P1SRAO3x2%2BvpntTUJ0oMB%2BMdkA%2FLnEwjpQuwFch8FPVzQ5z1oTefr64Oeg2uHB%2FioklOge%2F25YCgXJUpQRp%2FjgFTAvHygTF9OIkZhMIV4V%2BqsQo4QzsgfGgOGi84OTnAK%2FANHjHjCQVEEDS8t2lxkfEgVB8cRCowy8peJ08aEQujymrUDpTJP6trWrjVMvJtz3gtYBzAdJ5UQzYLw9pK2i8pp6vgy%2FPlaUJ"
 
+# === Flask App to Keep Service Alive ===
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running."
+
+# === Bot Logic ===
 async def run_bot():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)  # Change to False if you want to see the browser
+        browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()
         page = await context.new_page()
 
         while True:
-            print("Visiting Lootdest URL...")
-            await page.goto(LOOTDEST_URL, timeout=120000)
-
-            # Wait for ad/start button
-            print("Looking for ad/start button...")
             try:
-                await page.wait_for_selector("button", timeout=15000)
+                print("Opening Lootdest page...")
+                await page.goto(LOOTDEST_URL, timeout=120000)
+
+                await asyncio.sleep(2)
+
+                # Click the ad
                 buttons = await page.query_selector_all("button")
-                clicked = False
                 for btn in buttons:
-                    text = (await btn.inner_text()).lower()
-                    if any(trigger in text for trigger in ["discover", "download", "install", "try", "read more"]):
-                        await btn.click()
-                        print(f"Clicked ad button: {text}")
-                        clicked = True
-                        break
+                    try:
+                        text = await btn.inner_text()
+                        if any(word in text.lower() for word in ["discover", "download", "install", "try", "read more"]):
+                            print("Clicking ad button:", text)
+                            await btn.click()
+                            break
+                    except:
+                        continue
 
-                if not clicked:
-                    print("❌ No ad button found — retrying...")
-
-                # Wait for ad to open
+                # Close ad tab
                 await asyncio.sleep(3)
-                pages = context.pages
-                if len(pages) > 1:
-                    print("Ad page opened — closing it.")
-                    await pages[1].close()
+                if len(context.pages) > 1:
+                    await context.pages[1].close()
 
-                # Wait for unlock
-                print("Waiting 60s for unlock button...")
+                # Wait and unlock
                 await asyncio.sleep(60)
-
-                # Click "Unlock Content"
-                unlock_clicked = False
                 for btn in await page.query_selector_all("button"):
-                    text = (await btn.inner_text()).lower()
-                    if "unlock" in text and "content" in text:
-                        await btn.click()
-                        print("✅ Clicked 'Unlock Content'")
-                        unlock_clicked = True
-                        break
-
-                if not unlock_clicked:
-                    print("⚠️ 'Unlock Content' button not found — skipping.")
+                    try:
+                        if "unlock" in (await btn.inner_text()).lower():
+                            print("Clicking unlock button")
+                            await btn.click()
+                            break
+                    except:
+                        continue
 
             except Exception as e:
-                print(f"⚠️ Error: {e}")
+                print("Error:", e)
 
-            print("🔁 Looping again in 5s...")
             await asyncio.sleep(5)
 
-asyncio.run(run_bot())
+# === Start Bot in a Thread ===
+def start_bot():
+    asyncio.run(run_bot())
+
+threading.Thread(target=start_bot).start()
