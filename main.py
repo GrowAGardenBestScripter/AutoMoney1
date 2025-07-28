@@ -5,7 +5,7 @@ LOOTDEST_URL = "https://lootdest.org/s?Quh5zXjp&data=l%2BVS0fBwFTqe3k34ic8jObg%2
 
 async def run_bot():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)  # Use headless=False if debugging
+        browser = await p.chromium.launch(headless=True)  # Change to False if you want to see the browser
         context = await browser.new_context()
         page = await context.new_page()
 
@@ -61,4 +61,3 @@ async def run_bot():
             await asyncio.sleep(5)
 
 asyncio.run(run_bot())
-gTF9OIkZhMIV4V%2BqsQo4QzsgfGgOGi84OTnAK%2FANHjHjCQVEEDS8t2lxkfEgVB8cRCowy8peJ08aEQujymrUDpTJP6trWrjVMvJtz3gtYBzAdJ5UQzYLw9pK2i8pp6vgy%2FPlaUJ
